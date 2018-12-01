@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 
@@ -29,6 +30,7 @@ namespace LogTool
         private static async Task Work()
         {
             var msBuildWorkspace = MSBuildWorkspace.Create();
+
             var project = await msBuildWorkspace
                 //.OpenProjectAsync("C:\\Users\\vad7ik\\Documents\\VisualStudio2017\\Projects\\CodeTool1\\CodeTool1\\CodeTool1.csproj");
                 .OpenProjectAsync("D:\\CONGEN\\cnt\\agent-library2\\AgentSkills\\AgentSkills\\FetchnExtract\\FetchnExtract.csproj");
@@ -60,19 +62,54 @@ namespace LogTool
         public static void Try2()
         {
             var workspace = MSBuildWorkspace.Create();
+            
+            workspace.WorkspaceFailed += Workspace_WorkspaceFailed;
+            workspace.SkipUnrecognizedProjects = true;
+
+            workspace.Properties.Add("VSToolsPath", @"C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\MSBuild\Microsoft\VisualStudio\v15.0\");
             var solution = workspace
                 //.OpenSolutionAsync("C:\\Users\\vad7ik\\Documents\\VisualStudio2017\\Projects\\CodeTool1\\CodeTool1\\CodeTool1.csproj")
-                .OpenProjectAsync("D:\\CONGEN\\cnt\\agent-library2\\AgentSkills\\AgentSkills\\FetchnExtract\\FetchnExtract.csproj")
+                //.OpenProjectAsync("D:\\UserProfiles\\vad7ik_new\\Desktop\\mobility2018\\admin\\SoftDev\\Services\\ServiceComponents\\ServiceComponents.csproj")
+                .OpenSolutionAsync("D:\\UserProfiles\\vad7ik_new\\Desktop\\mobility2018\\admin\\SoftDev\\EPAdmin.sln")
                 .Result;
-            foreach (var document in solution.Documents)
-            //foreach (var document in solution.Projects.SelectMany(project => project.Documents))
+
+            var symbolsFound = solution.Projects.SelectMany(_ => SymbolFinder.FindDeclarationsAsync(_, "GetSaltBasedOnString", true).Result).ToList();
+
+            Console.WriteLine($"symbolsFound: {symbolsFound}");
+
+
+
+            foreach (var document in solution.Projects.SelectMany(project => project.Documents))
             {
                 var rootNode = document.GetSyntaxRootAsync().Result;
                 var semanticModel = document.GetSemanticModelAsync().Result;
 
+                if (document.FilePath.Contains("Encryption.cs"))
+                {
+                    //GetSaltBasedOnString
+                    var lookupSubject = SymbolFinder.FindSymbolAtPosition(semanticModel, 1078, workspace);
+                    var searchResult = SymbolFinder.FindReferencesAsync(lookupSubject, solution);
+                    Console.WriteLine(searchResult);
+                }
+
+
                 var methodDeclarationSyntaxs = rootNode
                     .DescendantNodes()
-                    .OfType<MethodDeclarationSyntax>();
+                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>();
+                
+                var methodCallExpressions = rootNode.DescendantNodes().OfType<MethodDeclarationSyntax>()
+                    .Where(_ => _.Identifier.ValueText == "GetSaltBasedOnString");
+
+                if (methodCallExpressions.Any())
+                {
+                    Console.WriteLine($"found methods {methodCallExpressions}");
+                }
+
+
+                //rootNode.FindNode(new "public static byte[] GetSaltBasedOnString(string toSalt)")
+                //SymbolFinder.FindSymbolAtPosition(semanticModel, )
+                //SymbolFinder.FindReferencesAsync(methodSymbol, doc.Project.Solution).Result
+                //SymbolFinder.FindReferencesAsync()
 
                 foreach (var methodDeclarationSyntax in methodDeclarationSyntaxs)
                 {
@@ -172,6 +209,10 @@ namespace LogTool
                 Console.WriteLine($"failed saving {exception}");
             }
             Console.ReadLine();
+        }
+
+        private static void Workspace_WorkspaceFailed(object sender, WorkspaceDiagnosticEventArgs e)
+        {
         }
 
         private static void Traverse(SyntaxNode node, int i = 0)
