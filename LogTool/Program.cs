@@ -62,15 +62,17 @@ namespace LogTool
         public static void Try2()
         {
             var workspace = MSBuildWorkspace.Create();
-            
+            //var workspace = MSBuildWorkspace.Create(new Dictionary<string, string> { { "p", "VisualStudioVersion=11.0" } });
+            //var workspace = MSBuildWorkspace.Create(new Dictionary<string, string> { { "VSToolsPath", @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\Microsoft\VisualStudio\v15.0" } });
+            ///p:VisualStudioVersion=11.0
             workspace.WorkspaceFailed += Workspace_WorkspaceFailed;
             workspace.SkipUnrecognizedProjects = true;
-
-            workspace.Properties.Add("VSToolsPath", @"C:\Program Files (x86)\Microsoft Visual Studio\Preview\Professional\MSBuild\Microsoft\VisualStudio\v15.0\");
+            
+            workspace.Properties.Add("VSToolsPath", @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\Microsoft\VisualStudio\v15.0");
             var solution = workspace
                 //.OpenSolutionAsync("C:\\Users\\vad7ik\\Documents\\VisualStudio2017\\Projects\\CodeTool1\\CodeTool1\\CodeTool1.csproj")
                 //.OpenProjectAsync("D:\\UserProfiles\\vad7ik_new\\Desktop\\mobility2018\\admin\\SoftDev\\Services\\ServiceComponents\\ServiceComponents.csproj")
-                .OpenSolutionAsync("D:\\UserProfiles\\vad7ik_new\\Desktop\\mobility2018\\admin\\SoftDev\\EPAdmin.sln")
+                .OpenSolutionAsync("D:\\Ebsco\\admin\\SoftDev\\EPAdmin.sln")
                 .Result;
 
             var symbolsFound = solution.Projects.SelectMany(_ => SymbolFinder.FindDeclarationsAsync(_, "GetSaltBasedOnString", true).Result).ToList();
@@ -213,6 +215,7 @@ namespace LogTool
 
         private static void Workspace_WorkspaceFailed(object sender, WorkspaceDiagnosticEventArgs e)
         {
+            Console.WriteLine(e.Diagnostic);
         }
 
         private static void Traverse(SyntaxNode node, int i = 0)
